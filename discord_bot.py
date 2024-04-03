@@ -102,7 +102,7 @@ async def handle_guild_reaction_add(message, emoji, user):
         return
 
     if str(emoji) == '🔍':
-        metadata = await get_metadata(message)
+        metadata = await get_metadata(message, user)
         if metadata:
             sent_message = await user.send(metadata)
             await sent_message.add_reaction('❌')
@@ -120,39 +120,51 @@ async def on_reaction_remove(reaction, user):
         if str(reaction.emoji) == '❌':
             await reaction.message.delete()
 
-async def get_metadata(message):
-    metadata = f"**Original Message**: {message.jump_url}\n\n"
+async def get_metadata(message, user):
+    base_message_content = f"**Original Message**: {message.jump_url}\n\n"
+
     image_count = len(message.attachments)
     for index, attachment in enumerate(message.attachments, start=1):
         if attachment.content_type.startswith('image/'):
+            # Initialize the metadata content with the base message for context.
+            metadata_content = base_message_content
+
             try:
+                # Read the image data and process it.
                 image_data = await attachment.read()
                 with open('temp_image', 'wb') as f:
                     f.write(image_data)
+
                 reader = ImageDataReader('temp_image')
-                metadata += f"**Image {index}/{image_count}**:\n"
-                metadata += f"URL: {attachment.url}\n"
-                metadata += f"Tool: {reader.tool}\n"
-                if reader.tool == "A1111 webUI":
-                    metadata += f"Prompt:\n```{reader.positive}```\n"
+                metadata_content += f"**Image {index}/{image_count}**:\n"
+                metadata_content += f"URL: {attachment.url}\n"
+                metadata_content += f"Tool: {reader.tool}\n"
+                
+                # Add specific metadata based on the tool used.
+                if reader.tool == "A1111/Forge":
+                    metadata_content += f"Prompt:\n```{reader.positive}```\n"
                     if reader.negative:
-                        metadata += f"Negative Prompt:\n```{reader.negative}```\n"
-                    metadata += f"Settings:\n```Steps: {reader.parameter['steps']}, Sampler: {reader.parameter['sampler']}, "
-                    metadata += f"CFG scale: {reader.parameter['cfg']}, Seed: {reader.parameter['seed']}, "
-                    metadata += f"Size: {reader.parameter['size']}, Model: {reader.parameter['model']}```\n\n"
+                        metadata_content += f"Negative Prompt:\n```{reader.negative}```\n"
+                    metadata_content += f"Settings:\n```Steps: {reader.parameter['steps']}, Sampler: {reader.parameter['sampler']}, "
+                    metadata_content += f"CFG scale: {reader.parameter['cfg']}, Seed: {reader.parameter['seed']}, "
+                    metadata_content += f"Size: {reader.parameter['size']}, Model: {reader.parameter['model']}```\n\n"
                 else:
-                    metadata += f"Prompt:\n```{reader.positive}```\n"
+                    metadata_content += f"Prompt:\n```{reader.positive}```\n"
                     if reader.negative:
-                        metadata += f"Negative Prompt:\n```{reader.negative}```\n"
-                    metadata += f"Settings:\n```{reader.setting}```\n"
-                    metadata += f"Parameters:\n```{reader.parameter}```\n\n"
+                        metadata_content += f"Negative Prompt:\n```{reader.negative}```\n"
+                    metadata_content += f"Settings:\n```{reader.setting}```\n"
+                    metadata_content += f"Parameters:\n```{reader.parameter}```\n\n"
+                
+                # Immediately send this image's metadata as a separate message.
+                await user.send(metadata_content)
+
             except Exception as e:
                 current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 print(f"[{current_time}][{message.guild.name}] Error processing image: {e}")
             finally:
+                # Clean up the temporary image file.
                 if os.path.exists('temp_image'):
                     os.remove('temp_image')
-    return metadata
 
 async def get_image_info(message):
     image_info = f"**Original Message**: {message.jump_url}\n\n"
