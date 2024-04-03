@@ -15,6 +15,9 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 excluded_channels = set()
 reaction_cooldown = {}
 
+# Variable to enable/disable star emoji reaction
+ENABLE_STAR_EMOJI_REACTION = True
+
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name} (ID: {bot.user.id})')
@@ -59,7 +62,8 @@ async def process_message(message):
                 if reader.tool:
                     has_metadata = True
             except Exception as e:
-                print(f"[{message.guild.name}] Error processing image: {e}")
+                current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                print(f"[{current_time}][{message.guild.name}] Error processing image: {e}")
             finally:
                 if os.path.exists('temp_image'):
                     os.remove('temp_image')
@@ -67,16 +71,17 @@ async def process_message(message):
                 await message.add_reaction('🔍')
             else:
                 await message.add_reaction('✉️')
+            # React with star emoji if enabled
+            if ENABLE_STAR_EMOJI_REACTION:
+                await message.add_reaction('⭐')
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    # Check if the reaction is from the bot itself
     if payload.user_id == bot.user.id:
         return
 
     channel = bot.get_channel(payload.channel_id)
     if channel is None or isinstance(channel, discord.DMChannel):
-        # If the channel is a DM or could not be fetched, attempt to handle as a DM reaction
         await handle_dm_reaction_add(payload)
     else:
         message = await channel.fetch_message(payload.message_id)
@@ -142,7 +147,8 @@ async def get_metadata(message):
                     metadata += f"Settings:\n```{reader.setting}```\n"
                     metadata += f"Parameters:\n```{reader.parameter}```\n\n"
             except Exception as e:
-                print(f"[{message.guild.name}] Error processing image: {e}")
+                current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                print(f"[{current_time}][{message.guild.name}] Error processing image: {e}")
             finally:
                 if os.path.exists('temp_image'):
                     os.remove('temp_image')
@@ -156,28 +162,6 @@ async def get_image_info(message):
             image_info += f"**Image {index}/{image_count}**:\n"
             image_info += f"URL: {attachment.url}\n\n"
     return image_info
-
-@bot.event
-async def on_raw_reaction_add(payload):
-    if payload.user_id == bot.user.id:
-        return
-    
-    channel = bot.get_channel(payload.channel_id)
-    if isinstance(channel, discord.channel.DMChannel):
-        if str(payload.emoji) == '❌':
-            message = await channel.fetch_message(payload.message_id)
-            await message.delete()
-    else:
-        message = await channel.fetch_message(payload.message_id)
-        user = await bot.fetch_user(payload.user_id)
-        if payload.emoji.name == '🔍':
-            metadata = await get_metadata(message)
-            if metadata:
-                await user.send(metadata)
-        elif payload.emoji.name == '✉️':
-            image_info = await get_image_info(message)
-            if image_info:
-                await user.send(image_info)
 
 with open('bot_token.txt', 'r') as f:
     bot_token = f.read().strip()
