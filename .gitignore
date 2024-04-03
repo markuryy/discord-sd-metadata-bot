@@ -1,6 +1,9 @@
 #Discord bot token
 bot_token.txt
 
+#metadata bot venv
+\metadatabot
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
