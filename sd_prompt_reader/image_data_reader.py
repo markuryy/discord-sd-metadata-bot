@@ -75,10 +75,10 @@ class ImageDataReader:
                             if "prompt" in self._info:
                                 self._tool = "ComfyUI\n(A1111 compatible)"
                             else:
-                                self._tool = "A1111 webUI"
+                                self._tool = "A1111/Forge"
                             self._parser = A1111(info=self._info)
                     elif "postprocessing" in self._info:
-                        self._tool = "A1111 webUI\n(Postprocessing)"
+                        self._tool = "A1111/Forge\n(Postprocessing)"
                         self._parser = A1111(info=self._info)
                     # easydiff png format
                     elif (
@@ -181,7 +181,7 @@ class ImageDataReader:
                                         self._parser = EasyDiffusion(raw=self._raw)
                                     # a1111 jpeg and webp format
                                     else:
-                                        self._tool = "A1111 webUI"
+                                        self._tool = "A1111/Forge"
                                         self._parser = A1111(raw=self._raw)
                             except Exception:
                                 self._status = BaseFormat.Status.FORMAT_ERROR
